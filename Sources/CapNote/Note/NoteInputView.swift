@@ -6,54 +6,33 @@ struct NoteInputView: View {
     let onSubmit: () -> Void
     let onSettingsTap: () -> Void
 
-    @FocusState private var editorFocused: Bool
+    private static let editorPadding = EdgeInsets(top: 14, leading: 14, bottom: 8, trailing: 14)
+    private static let editorFont = NSFont.systemFont(ofSize: NSFont.systemFontSize + 2)
 
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
+                PlainTextEditor(
+                    text: $state.noteText,
+                    font: Self.editorFont,
+                    focusTrigger: state.focusEditorTrigger,
+                    onSubmit: onSubmit,
+                    onEscape: { handleEscape() },
+                    onToggleSettings: { state.face = .settings }
+                )
+                .padding(Self.editorPadding)
+
                 if state.noteText.isEmpty {
                     Text("Quick note...")
-                        .font(.title3)
+                        .font(.system(size: NSFont.systemFontSize + 2))
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
+                        .padding(Self.editorPadding)
                         .allowsHitTesting(false)
                 }
-                TextEditor(text: $state.noteText)
-                    .font(.title3)
-                    .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .focused($editorFocused)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             footer
-        }
-        .onAppear {
-            editorFocused = true
-        }
-        .onChange(of: state.focusEditorTrigger) { _, _ in
-            editorFocused = true
-        }
-        .onChange(of: state.face) { _, newFace in
-            if newFace == .input {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    editorFocused = true
-                }
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            if state.face == .input {
-                editorFocused = true
-            }
-        }
-        .onKeyPress(.return, phases: .down) { press in
-            if press.modifiers.contains(.command) {
-                onSubmit()
-                return .handled
-            }
-            return .ignored
         }
     }
 
@@ -73,6 +52,14 @@ struct NoteInputView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(.thinMaterial)
+    }
+
+    private func handleEscape() {
+        if state.face == .settings {
+            state.face = .input
+        } else {
+            NotePanelController.shared.hidePanel()
+        }
     }
 
     @ViewBuilder

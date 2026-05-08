@@ -10,7 +10,7 @@ final class NotePanel: NSPanel {
         )
         isFloatingPanel = true
         level = .floating
-        titlebarAppearsTransparent = true
+        titlebarAppearsTransparent = false
         titleVisibility = .hidden
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
