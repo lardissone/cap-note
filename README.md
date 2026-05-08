@@ -26,7 +26,7 @@ A tiny menubar-only macOS app that posts quick notes to your [Capacities](https:
 Requires Xcode 15 (or the matching command-line tools) for Swift 5.9.
 
 ```sh
-git clone https://github.com/<you>/cap-note.git
+git clone https://github.com/lardissone/cap-note.git
 cd cap-note
 swift build -c release
 .build/release/CapNote
