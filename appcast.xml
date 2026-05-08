@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>CapNote</title>
+        <link>https://github.com/lardissone/cap-note</link>
+        <description>Quick notes to Capacities, from your menu bar.</description>
+        <language>en</language>
+    </channel>
+</rss>
