@@ -74,6 +74,13 @@ chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 cp -R "$SPARKLE_FRAMEWORK_SRC" "$APP_BUNDLE/Contents/Frameworks/"
 
+ICON_SRC="$REPO_ROOT/Resources/AppIcon.icns"
+if [[ ! -f "$ICON_SRC" ]]; then
+    echo "Could not find $ICON_SRC. Run bin/make-icon.sh to generate it."
+    exit 1
+fi
+cp "$ICON_SRC" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
+
 echo "==> Writing Info.plist"
 cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -86,6 +93,10 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <string>$APP_NAME</string>
     <key>CFBundleExecutable</key>
     <string>$APP_NAME</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>$BUNDLE_ID</string>
     <key>CFBundleInfoDictionaryVersion</key>
