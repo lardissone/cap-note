@@ -3,17 +3,17 @@ import Foundation
 import Observation
 
 enum WindowPosition: String, CaseIterable, Identifiable {
+    case lastUsed
     case centered
     case atCursor
-    case lastUsed
 
     var id: String { rawValue }
 
     var localizedTitle: String {
         switch self {
+        case .lastUsed: return "Where I left it"
         case .centered: return "Centered on screen"
         case .atCursor: return "At cursor position"
-        case .lastUsed: return "Where I left it"
         }
     }
 }
@@ -72,7 +72,7 @@ final class AppSettings {
         self.defaults = defaults
         selectedSpaceId = defaults.string(forKey: Keys.selectedSpaceId)
         windowPosition = WindowPosition(rawValue: defaults.string(forKey: Keys.windowPosition) ?? "")
-            ?? .centered
+            ?? .lastUsed
         useSeparator = defaults.object(forKey: Keys.useSeparator) as? Bool ?? true
         separatorString = defaults.string(forKey: Keys.separatorString) ?? "---\n\n"
         includeTimestamp = defaults.object(forKey: Keys.includeTimestamp) as? Bool ?? false
