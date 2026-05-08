@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CapNote — Quick notes for Capacities, from the menu bar</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A tiny menu-bar app for macOS that posts quick notes straight to your Capacities daily note. Press a shortcut, type, hit ⌘+Enter.">
+<meta property="og:title" content="CapNote — Quick notes for Capacities">
+<meta property="og:description" content="Press ⌘⇧⌥C anywhere. Type. ⌘↵. Your note is in today's Capacities daily note.">
+<meta property="og:image" content="https://lardissone.github.io/cap-note/appicon.png">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0c0c0d">
+<link rel="icon" type="image/png" href="appicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0b0b0c;
+    --bg-soft: #131316;
+    --surface: #18181b;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text: #ece9e1;
+    --text-muted: #8b8881;
+    --text-faint: #54524d;
+    --accent: #f4a85a;
+    --accent-soft: rgba(244, 168, 90, 0.18);
+    --accent-glow: rgba(244, 168, 90, 0.35);
+    --serif: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+    --sans: 'Geist', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    --max: 860px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    letter-spacing: -0.005em;
+    overflow-x: hidden;
+    background-image:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(244, 168, 90, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 30%, rgba(120, 110, 200, 0.05) 0%, transparent 60%);
+    background-attachment: fixed;
+}
+
+/* Subtle grain overlay — pure CSS, no images */
+body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index: 1000;
+}
+
+main { max-width: var(--max); margin: 0 auto; padding: 6.5rem 1.75rem 3rem; position: relative; }
+
+@media (min-width: 720px) {
+    main { padding: 9rem 2rem 5rem; }
+}
+
+/* ------- Hero ------- */
+
+.hero { text-align: center; margin-bottom: 7rem; }
+
+.hero .icon {
+    width: 132px; height: 132px;
+    margin: 0 auto 2.5rem;
+    display: block;
+    border-radius: 30%;
+    /* macOS-style ambient shadow with warm glow */
+    filter:
+        drop-shadow(0 24px 48px rgba(0, 0, 0, 0.55))
+        drop-shadow(0 0 80px var(--accent-glow));
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+}
+
+.hero h1 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: clamp(3.25rem, 8vw, 5.25rem);
+    letter-spacing: -0.045em;
+    line-height: 1;
+    margin-bottom: 1.75rem;
+}
+
+.hero h1 .ck { color: var(--accent); font-style: italic; font-family: var(--serif); font-weight: 400; }
+
+.hero .tagline {
+    font-family: var(--serif);
+    font-size: clamp(1.4rem, 3vw, 1.85rem);
+    line-height: 1.35;
+    color: var(--text-muted);
+    max-width: 36ch;
+    margin: 0 auto 0.5rem;
+}
+
+.hero .tagline em {
+    font-style: italic;
+    color: var(--text);
+}
+
+.hero .hotkey-hint {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin: 2.25rem auto 0;
+    letter-spacing: -0.005em;
+}
+
+.hero .hotkey-hint kbd { margin: 0 1px; }
+
+.hero .cta { display: flex; flex-direction: column; gap: 0.75rem; align-items: center; margin: 2.5rem 0 1.25rem; }
+
+@media (min-width: 520px) { .hero .cta { flex-direction: row; justify-content: center; } }
+
+.btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.85rem 1.6rem;
+    border-radius: 999px;
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 0.95rem;
+    letter-spacing: -0.005em;
+    text-decoration: none;
+    transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: #1a1208;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 0 30px var(--accent-soft);
+}
+.btn-primary:hover { transform: translateY(-1px); background: #ffba6a; }
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+}
+.btn-ghost:hover { background: var(--bg-soft); border-color: var(--text-muted); }
+
+.btn .arrow { transition: transform 0.15s ease; }
+.btn:hover .arrow { transform: translateX(2px); }
+
+.hero .meta {
+    font-size: 0.825rem;
+    color: var(--text-faint);
+    letter-spacing: 0.02em;
+}
+
+.hero .meta span { color: var(--text-muted); }
+
+/* ------- Section common ------- */
+
+.section { margin: 5rem 0; }
+.section + .section { margin-top: 7rem; }
+
+.eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--text-faint);
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: clamp(1.85rem, 4vw, 2.4rem);
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 2rem;
+}
+
+h2 em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+}
+
+p { color: var(--text-muted); }
+p strong { color: var(--text); font-weight: 500; }
+
+a { color: var(--text); text-decoration: underline; text-decoration-color: var(--text-faint); text-underline-offset: 3px; transition: text-decoration-color 0.15s ease; }
+a:hover { text-decoration-color: var(--accent); }
+
+/* ------- Screenshots ------- */
+
+.screenshot {
+    margin: 3rem 0;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.04) inset,
+        0 50px 100px -25px rgba(0, 0, 0, 0.7),
+        0 30px 60px -30px rgba(80, 50, 200, 0.15);
+}
+
+.screenshot img { display: block; width: 100%; height: auto; }
+
+.screenshot figcaption {
+    padding: 1.25rem 1.5rem;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+/* ------- How-it-works strip ------- */
+
+.flow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    margin: 4rem 0;
+    padding: 3rem 1.75rem;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 720px) {
+    .flow { grid-template-columns: repeat(3, 1fr); padding: 3.5rem 0; }
+}
+
+.flow-step {
+    text-align: center;
+    position: relative;
+}
+
+.flow-step .step-num {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 2.5rem;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.flow-step h3 {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+}
+
+.flow-step p { font-size: 0.95rem; }
+
+.flow-step .keys { margin-top: 0.75rem; }
+
+@media (min-width: 720px) {
+    .flow-step:not(:last-child)::after {
+        content: '→';
+        position: absolute;
+        right: -1.25rem;
+        top: 1rem;
+        color: var(--text-faint);
+        font-family: var(--serif);
+        font-style: italic;
+    }
+}
+
+/* ------- Features ------- */
+
+.features-grid {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    border-top: 1px solid var(--border);
+}
+
+@media (min-width: 720px) {
+    .features-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.features-grid li {
+    padding: 1.75rem 0.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 720px) {
+    .features-grid li:nth-child(odd) { padding-right: 2rem; border-right: 1px solid var(--border); }
+    .features-grid li:nth-child(even) { padding-left: 2rem; }
+}
+
+.features-grid h3 {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 1.05rem;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+}
+
+.features-grid p { font-size: 0.95rem; line-height: 1.55; }
+
+/* ------- Setup ------- */
+
+.setup-list {
+    counter-reset: step;
+    list-style: none;
+}
+
+.setup-list li {
+    counter-increment: step;
+    position: relative;
+    padding: 1.5rem 0 1.5rem 4.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.setup-list li:last-child { border-bottom: none; }
+
+.setup-list li::before {
+    content: counter(step, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 1.4rem;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.6rem;
+    color: var(--accent);
+    line-height: 1;
+}
+
+.setup-list h3 {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 1.1rem;
+    margin-bottom: 0.35rem;
+    color: var(--text);
+    letter-spacing: -0.01em;
+}
+
+.setup-list p { font-size: 0.97rem; line-height: 1.55; }
+
+/* ------- KBD ------- */
+
+kbd {
+    display: inline-block;
+    background: linear-gradient(180deg, #1f1f23 0%, #131316 100%);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 0.05em 0.45em;
+    font-family: var(--mono);
+    font-size: 0.85em;
+    font-weight: 500;
+    color: var(--text);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.05) inset,
+        0 1px 0 rgba(0, 0, 0, 0.4);
+    line-height: 1.4;
+    margin: 0 1px;
+    vertical-align: 1px;
+}
+
+code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--bg-soft);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+/* ------- Pull-quote / why ------- */
+
+.why {
+    border-left: 2px solid var(--accent);
+    padding-left: 1.75rem;
+    margin: 5rem 0;
+}
+
+.why p {
+    font-family: var(--serif);
+    font-size: 1.4rem;
+    line-height: 1.45;
+    color: var(--text);
+}
+
+.why p em { font-style: italic; color: var(--accent); }
+
+.why footer { margin-top: 1rem; font-family: var(--sans); font-size: 0.9rem; color: var(--text-faint); border: none; padding: 0; }
+
+/* ------- Footer ------- */
+
+footer.page-footer {
+    margin-top: 6rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.875rem;
+    color: var(--text-faint);
+    line-height: 1.7;
+}
+
+footer.page-footer a { color: var(--text-muted); }
+footer.page-footer a:hover { color: var(--text); }
+
+footer.page-footer .row { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: space-between; align-items: baseline; }
+
+footer.page-footer .links { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+
+footer.page-footer .disclaimer { margin-top: 1rem; max-width: 60ch; }
+
+/* ------- Selection ------- */
+
+::selection { background: var(--accent-soft); color: var(--text); }
+
+/* ------- Reduced motion ------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .hero .icon { animation: none; }
+    * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<main>
+
+<header class="hero">
+    <img class="icon" src="appicon.png" alt="CapNote app icon — a stylized note in a black squircle">
+    <h1>Cap<span class="ck">N</span>ote</h1>
+    <p class="tagline">A menu-bar dropline for your <em>Capacities</em> daily notes.</p>
+    <p class="hotkey-hint">Hit <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>C</kbd> from anywhere. Type. <kbd>⌘</kbd><kbd>↵</kbd>. Done.</p>
+    <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/lardissone/cap-note/releases/latest">Download for macOS</a>
+        <a class="btn btn-ghost" href="https://github.com/lardissone/cap-note">Source on GitHub <span class="arrow">→</span></a>
+    </div>
+    <p class="meta">macOS 14 Sonoma or later <span>·</span> Apple Silicon &amp; Intel <span>·</span> Signed &amp; notarized <span>·</span> MIT</p>
+</header>
+
+<section class="section">
+    <p class="eyebrow">The window</p>
+    <figure class="screenshot">
+        <img src="screenshots/quick-note.jpg" alt="The CapNote quick-note window floating on a macOS desktop, with a placeholder reading 'Quick note...' and a footer that says ⌘ Enter to send">
+        <figcaption>Floats above whatever you were doing. Resizable. Remembers where you put it.</figcaption>
+    </figure>
+</section>
+
+<section class="section flow" aria-label="How it works">
+    <div class="flow-step">
+        <p class="step-num">i.</p>
+        <h3>Summon</h3>
+        <p>Anywhere in the OS, hit your shortcut.</p>
+        <p class="keys"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>C</kbd></p>
+    </div>
+    <div class="flow-step">
+        <p class="step-num">ii.</p>
+        <h3>Write</h3>
+        <p>Type the note. Multi-line if you want.</p>
+        <p class="keys"><kbd>note here…</kbd></p>
+    </div>
+    <div class="flow-step">
+        <p class="step-num">iii.</p>
+        <h3>Send</h3>
+        <p>Lands in today's daily note instantly.</p>
+        <p class="keys"><kbd>⌘</kbd><kbd>↵</kbd></p>
+    </div>
+</section>
+
+<section class="section">
+    <p class="eyebrow">Configuration</p>
+    <h2>Settings live on the <em>back</em> of the same window.</h2>
+    <p>Tap the cog or hit <kbd>⌘</kbd><kbd>,</kbd> and the panel flips. Set the global shortcut, paste your Capacities API token, pick a space, choose how the note is shaped before it gets posted. Hit <kbd>Esc</kbd> to flip back.</p>
+    <figure class="screenshot">
+        <img src="screenshots/settings.jpg" alt="The CapNote settings face showing General, Capacities account, and Note formatting sections">
+        <figcaption>One window, two faces. No separate preferences pane.</figcaption>
+    </figure>
+</section>
+
+<section class="section">
+    <p class="eyebrow">What it is</p>
+    <h2>Plain text in. <em>Daily note out.</em></h2>
+    <ul class="features-grid">
+        <li>
+            <h3>Configurable global shortcut</h3>
+            <p>Default is <kbd>⌘⇧⌥C</kbd>. Rebind from settings to whatever frees your fingers up.</p>
+        </li>
+        <li>
+            <h3>Optional separator &amp; timestamp</h3>
+            <p>Prefix every note with a custom string (default <code>---</code>) and toggle Capacities' auto-timestamp.</p>
+        </li>
+        <li>
+            <h3>Position memory</h3>
+            <p>The window opens where you last left it, or pinned to centered, or anchored to the cursor.</p>
+        </li>
+        <li>
+            <h3>Token in the Keychain</h3>
+            <p>Your Capacities API token is stored in the macOS Keychain — never written to disk in plaintext.</p>
+        </li>
+        <li>
+            <h3>Auto-updates</h3>
+            <p>Sparkle delivers signed updates in the background. Cmd-Shift-Sigh-of-Relief.</p>
+        </li>
+        <li>
+            <h3>No Dock icon, no clutter</h3>
+            <p>Lives in the menu bar as a small note glyph. Quit from the menu when you've had enough.</p>
+        </li>
+    </ul>
+</section>
+
+<section class="section">
+    <p class="eyebrow">Five-minute setup</p>
+    <h2>Get it running.</h2>
+    <ol class="setup-list">
+        <li>
+            <h3>Generate an API token in Capacities</h3>
+            <p>Open Capacities → <em>Settings → Capacities API</em>, create a token, copy it.</p>
+        </li>
+        <li>
+            <h3>Drag CapNote into <code>/Applications</code></h3>
+            <p>Download the zip from the latest release, unzip, drop the <code>.app</code> into your Applications folder.</p>
+        </li>
+        <li>
+            <h3>Open it once</h3>
+            <p>The note glyph appears in your menu bar. No Dock icon — that's intentional.</p>
+        </li>
+        <li>
+            <h3>Paste the token, pick a space</h3>
+            <p>From the menu bar, choose <em>Settings…</em>, paste the token in <em>Capacities account</em>, hit <em>Test &amp; Load spaces</em>, then pick the space you want notes to land in.</p>
+        </li>
+        <li>
+            <h3>That's it</h3>
+            <p>Press <kbd>⌘⇧⌥C</kbd> from anywhere, write, hit <kbd>⌘↵</kbd>. Open Capacities — your note is at the top of today's daily note.</p>
+        </li>
+    </ol>
+</section>
+
+<aside class="why">
+    <p>Originally a BetterTouchTool macro. CapNote is the same idea, freed of BTT — <em>open-source, signed, notarized, and able to update itself.</em></p>
+    <footer>— Why this exists.</footer>
+</aside>
+
+<footer class="page-footer">
+    <div class="row">
+        <p>Made by <a href="https://github.com/lardissone">Leandro Ardissone</a></p>
+        <div class="links">
+            <a href="https://github.com/lardissone/cap-note">GitHub</a>
+            <a href="https://github.com/lardissone/cap-note/releases">Releases</a>
+            <a href="https://github.com/lardissone/cap-note/blob/main/LICENSE">License</a>
+        </div>
+    </div>
+    <p class="disclaimer">Not affiliated with Capacities. The Capacities API is in beta and may change underneath us.</p>
+</footer>
+
+</main>
+</body>
+</html>
