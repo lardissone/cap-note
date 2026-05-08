@@ -21,6 +21,34 @@ A tiny menubar-only macOS app that posts quick notes to your [Capacities](https:
 - macOS 14 (Sonoma) or later.
 - A [Capacities](https://capacities.io) account with API access enabled (Settings → Capacities API).
 
+## Install
+
+Grab the latest pre-built binary from
+[GitHub Releases](https://github.com/lardissone/cap-note/releases/latest).
+
+```sh
+# Download and unzip (replace 0.1.0 with the latest version tag)
+curl -L -o CapNote.zip \
+  https://github.com/lardissone/cap-note/releases/latest/download/CapNote-0.1.0.zip
+unzip CapNote.zip
+
+# The binary is not yet code-signed/notarized — clear the macOS
+# quarantine attribute so Gatekeeper lets it run.
+xattr -dr com.apple.quarantine CapNote
+
+# Move it somewhere stable (or run in place) and launch.
+mv CapNote /usr/local/bin/
+CapNote &
+```
+
+The note icon shows up in the menu bar. Quit from the menu or via
+`pkill -x CapNote`.
+
+> **Note**: while the project still ships as a bare executable, every
+> rebuild changes its code-signing identity, which means macOS will
+> ask you to re-authorize Keychain access for the saved API token on
+> each upgrade. A signed `.app` bundle (planned) will fix this.
+
 ## Building from source
 
 Requires Xcode 15 (or the matching command-line tools) for Swift 5.9.
