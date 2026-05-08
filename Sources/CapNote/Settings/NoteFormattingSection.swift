@@ -25,6 +25,7 @@ struct NoteFormattingSection: View {
                 Toggle("Include timestamp in daily note", isOn: $settings.includeTimestamp)
             }
             .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

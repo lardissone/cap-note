@@ -1,9 +1,11 @@
+import AppKit
 import Foundation
 import Observation
 
 enum WindowPosition: String, CaseIterable, Identifiable {
     case centered
     case atCursor
+    case lastUsed
 
     var id: String { rawValue }
 
@@ -11,6 +13,7 @@ enum WindowPosition: String, CaseIterable, Identifiable {
         switch self {
         case .centered: return "Centered on screen"
         case .atCursor: return "At cursor position"
+        case .lastUsed: return "Where I left it"
         }
     }
 }
@@ -39,6 +42,16 @@ final class AppSettings {
         didSet { defaults.set(includeTimestamp, forKey: Keys.includeTimestamp) }
     }
 
+    var savedWindowOrigin: NSPoint? {
+        didSet {
+            if let origin = savedWindowOrigin {
+                defaults.set(NSStringFromPoint(origin), forKey: Keys.savedWindowOrigin)
+            } else {
+                defaults.removeObject(forKey: Keys.savedWindowOrigin)
+            }
+        }
+    }
+
     /// Reads the API token from the macOS Keychain. Returns `nil` when not set.
     /// Token writes go through `setApiToken(_:)` so callers can react to errors.
     var apiToken: String? {
@@ -63,6 +76,14 @@ final class AppSettings {
         useSeparator = defaults.object(forKey: Keys.useSeparator) as? Bool ?? true
         separatorString = defaults.string(forKey: Keys.separatorString) ?? "---\n\n"
         includeTimestamp = defaults.object(forKey: Keys.includeTimestamp) as? Bool ?? false
+
+        if let originString = defaults.string(forKey: Keys.savedWindowOrigin),
+           !originString.isEmpty {
+            let parsed = NSPointFromString(originString)
+            savedWindowOrigin = (parsed == .zero) ? nil : parsed
+        } else {
+            savedWindowOrigin = nil
+        }
     }
 
     private enum Keys {
@@ -71,5 +92,6 @@ final class AppSettings {
         static let useSeparator = "useSeparator"
         static let separatorString = "separatorString"
         static let includeTimestamp = "includeTimestamp"
+        static let savedWindowOrigin = "savedWindowOrigin"
     }
 }

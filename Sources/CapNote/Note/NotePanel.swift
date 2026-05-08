@@ -4,7 +4,7 @@ final class NotePanel: NSPanel {
     init(contentRect: NSRect) {
         super.init(
             contentRect: contentRect,
-            styleMask: [.titled, .closable, .resizable, .nonactivatingPanel, .fullSizeContentView],
+            styleMask: [.titled, .closable, .resizable, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -12,10 +12,9 @@ final class NotePanel: NSPanel {
         level = .floating
         titlebarAppearsTransparent = true
         titleVisibility = .hidden
-        isMovableByWindowBackground = true
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
-        minSize = NSSize(width: 360, height: 240)
+        minSize = NSSize(width: 300, height: 200)
         animationBehavior = .utilityWindow
     }
 

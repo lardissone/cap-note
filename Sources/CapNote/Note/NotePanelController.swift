@@ -7,7 +7,7 @@ enum CardFace {
 }
 
 @MainActor
-final class NotePanelController {
+final class NotePanelController: NSObject {
     static let shared = NotePanelController()
 
     private var panel: NotePanel?
@@ -15,7 +15,12 @@ final class NotePanelController {
     private var currentPanelFace: CardFace = .input
 
     private let defaultInputSize = NSSize(width: 480, height: 360)
+    private let inputMinSize = NSSize(width: 300, height: 200)
     private let settingsSize = NSSize(width: 520, height: 540)
+    private let unboundedMaxSize = NSSize(
+        width: CGFloat.greatestFiniteMagnitude,
+        height: CGFloat.greatestFiniteMagnitude
+    )
 
     func showPanel(initialFace: CardFace) {
         AppState.shared.face = initialFace
@@ -31,6 +36,10 @@ final class NotePanelController {
 
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
+
+        if initialFace == .input {
+            triggerEditorFocus()
+        }
     }
 
     func togglePanel(initialFace: CardFace) {
@@ -56,8 +65,15 @@ final class NotePanelController {
         switch face {
         case .input:
             target = lastInputSize ?? defaultInputSize
+            panel.minSize = inputMinSize
+            panel.maxSize = unboundedMaxSize
+            panel.styleMask.insert(.resizable)
         case .settings:
             target = settingsSize
+            // Loosen constraints so we can animate to the target frame even
+            // when shrinking from a larger user-resized input window.
+            panel.minSize = NSSize(width: 1, height: 1)
+            panel.maxSize = unboundedMaxSize
         }
 
         let currentFrame = panel.frame
@@ -68,18 +84,37 @@ final class NotePanelController {
             height: target.height
         )
 
-        if animated {
-            NSAnimationContext.runAnimationGroup { ctx in
+        if animated && currentFrame.size != target {
+            NSAnimationContext.runAnimationGroup({ ctx in
                 ctx.duration = 0.4
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 ctx.allowsImplicitAnimation = true
                 panel.animator().setFrame(newFrame, display: true)
-            }
+            }, completionHandler: {
+                Task { @MainActor in
+                    self.lockSettingsSizeIfNeeded(face: face, panel: panel)
+                }
+            })
         } else {
             panel.setFrame(newFrame, display: true)
+            lockSettingsSizeIfNeeded(face: face, panel: panel)
         }
 
         currentPanelFace = face
+    }
+
+    private func lockSettingsSizeIfNeeded(face: CardFace, panel: NotePanel) {
+        guard face == .settings else { return }
+        panel.styleMask.remove(.resizable)
+        panel.minSize = settingsSize
+        panel.maxSize = settingsSize
+    }
+
+    func triggerEditorFocus() {
+        // Tiny delay so the panel becomes key before SwiftUI applies focus.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            AppState.shared.focusEditorTrigger &+= 1
+        }
     }
 
     private func makePanel(initialFace: CardFace) -> NotePanel {
@@ -92,7 +127,11 @@ final class NotePanelController {
             onSubmit: { [weak self] in self?.submit() },
             onClose: { [weak self] in self?.hidePanel() }
         )
-        panel.contentView = NSHostingView(rootView: card)
+        let hosting = NSHostingView(rootView: card)
+        hosting.autoresizingMask = [.width, .height]
+        panel.contentView = hosting
+
+        panel.delegate = self
         return panel
     }
 
@@ -102,27 +141,36 @@ final class NotePanelController {
             panel.center()
         case .atCursor:
             positionAtCursor(panel)
+        case .lastUsed:
+            if let origin = AppSettings.shared.savedWindowOrigin {
+                panel.setFrameOrigin(clampOriginToVisibleScreen(origin, size: panel.frame.size))
+            } else {
+                panel.center()
+            }
         }
     }
 
     private func positionAtCursor(_ panel: NotePanel) {
         let cursor = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first(where: { $0.frame.contains(cursor) })
-            ?? NSScreen.main
-            ?? NSScreen.screens.first
-        guard let bounds = screen?.visibleFrame else {
-            panel.center()
-            return
-        }
-
         let size = panel.frame.size
-        var origin = NSPoint(
+        let origin = NSPoint(
             x: cursor.x - size.width / 2,
             y: cursor.y - size.height / 2
         )
-        origin.x = max(bounds.minX, min(origin.x, bounds.maxX - size.width))
-        origin.y = max(bounds.minY, min(origin.y, bounds.maxY - size.height))
-        panel.setFrameOrigin(origin)
+        panel.setFrameOrigin(clampOriginToVisibleScreen(origin, size: size))
+    }
+
+    private func clampOriginToVisibleScreen(_ origin: NSPoint, size: NSSize) -> NSPoint {
+        let center = NSPoint(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(center) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+        guard let bounds = screen?.visibleFrame else { return origin }
+
+        var clamped = origin
+        clamped.x = max(bounds.minX, min(clamped.x, bounds.maxX - size.width))
+        clamped.y = max(bounds.minY, min(clamped.y, bounds.maxY - size.height))
+        return clamped
     }
 
     private func submit() {
@@ -177,5 +225,25 @@ final class NotePanelController {
             state.face = .settings
             state.sendStatus = .idle
         }
+    }
+}
+
+extension NotePanelController: NSWindowDelegate {
+    nonisolated func windowDidMove(_ notification: Notification) {
+        Task { @MainActor in
+            self.persistCurrentOrigin()
+        }
+    }
+
+    nonisolated func windowDidResize(_ notification: Notification) {
+        Task { @MainActor in
+            self.persistCurrentOrigin()
+        }
+    }
+
+    @MainActor
+    private func persistCurrentOrigin() {
+        guard let panel else { return }
+        AppSettings.shared.savedWindowOrigin = panel.frame.origin
     }
 }

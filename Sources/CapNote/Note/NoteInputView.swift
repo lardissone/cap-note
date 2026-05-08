@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct NoteInputView: View {
@@ -15,23 +16,24 @@ struct NoteInputView: View {
                         .font(.title3)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 12)
                         .allowsHitTesting(false)
                 }
                 TextEditor(text: $state.noteText)
                     .font(.title3)
                     .scrollContentBackground(.hidden)
-                    .padding(8)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
                     .focused($editorFocused)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             footer
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(.thinMaterial)
         }
         .onAppear {
+            editorFocused = true
+        }
+        .onChange(of: state.focusEditorTrigger) { _, _ in
             editorFocused = true
         }
         .onChange(of: state.face) { _, newFace in
@@ -39,6 +41,11 @@ struct NoteInputView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     editorFocused = true
                 }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            if state.face == .input {
+                editorFocused = true
             }
         }
         .onKeyPress(.return, phases: .down) { press in
@@ -50,7 +57,6 @@ struct NoteInputView: View {
         }
     }
 
-    @ViewBuilder
     private var footer: some View {
         HStack {
             statusLabel
@@ -64,6 +70,9 @@ struct NoteInputView: View {
             .help("Settings (⌘,)")
         }
         .font(.callout)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.thinMaterial)
     }
 
     @ViewBuilder

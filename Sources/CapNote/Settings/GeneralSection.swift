@@ -19,6 +19,7 @@ struct GeneralSection: View {
                 .pickerStyle(.menu)
             }
             .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

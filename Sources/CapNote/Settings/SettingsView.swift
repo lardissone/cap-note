@@ -10,8 +10,8 @@ struct SettingsView: View {
             header
             VStack(spacing: 16) {
                 GeneralSection(settings: settings)
-                NoteFormattingSection(settings: settings)
                 AccountSection(state: state, settings: settings)
+                NoteFormattingSection(settings: settings)
             }
             .padding(20)
             Spacer(minLength: 0)
