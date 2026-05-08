@@ -24,16 +24,19 @@ jobs:
       - name: Show Swift version
         run: swift --version
 
-      - name: Build release binary
-        run: swift build -c release
+      - name: Build CapNote.app
+        run: |
+          version="${TAG#v}"
+          bin/make-app.sh "$version"
 
       - name: Stage release artifact
         run: |
-          mkdir -p dist
-          cp .build/release/CapNote dist/CapNote
           version="${TAG#v}"
-          cd dist
-          zip -j "CapNote-${version}.zip" CapNote
+          mkdir -p stage
+          cp -R dist/CapNote.app stage/
+          cd stage
+          zip -ry "../CapNote-${version}.zip" CapNote.app
+          cd ..
           shasum -a 256 "CapNote-${version}.zip" > "CapNote-${version}.zip.sha256"
 
       - name: Create GitHub release
@@ -44,5 +47,5 @@ jobs:
           gh release create "$TAG" \
             --title "CapNote $TAG" \
             --generate-notes \
-            "dist/CapNote-${version}.zip" \
-            "dist/CapNote-${version}.zip.sha256"
+            "CapNote-${version}.zip" \
+            "CapNote-${version}.zip.sha256"

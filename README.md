@@ -23,50 +23,58 @@ A tiny menubar-only macOS app that posts quick notes to your [Capacities](https:
 
 ## Install
 
-Grab the latest pre-built binary from
-[GitHub Releases](https://github.com/lardissone/cap-note/releases/latest).
+1. Download `CapNote-x.y.z.zip` from
+   [GitHub Releases](https://github.com/lardissone/cap-note/releases/latest).
+2. Unzip it — you'll get `CapNote.app`.
+3. Drag `CapNote.app` into `/Applications`.
+4. Because the build is ad-hoc-signed (not yet notarized), macOS
+   Gatekeeper blocks it on first launch. Clear the quarantine
+   attribute once:
 
-```sh
-# Download and unzip (replace 0.1.0 with the latest version tag)
-curl -L -o CapNote.zip \
-  https://github.com/lardissone/cap-note/releases/latest/download/CapNote-0.1.0.zip
-unzip CapNote.zip
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/CapNote.app
+   ```
 
-# The binary is not yet code-signed/notarized — clear the macOS
-# quarantine attribute so Gatekeeper lets it run.
-xattr -dr com.apple.quarantine CapNote
+5. Open **CapNote** from Launchpad or `/Applications`. The note icon
+   shows up in the menu bar.
 
-# Move it somewhere stable (or run in place) and launch.
-mv CapNote /usr/local/bin/
-CapNote &
-```
+To quit: use the menu's "Quit CapNote" or run `pkill -x CapNote`.
 
-The note icon shows up in the menu bar. Quit from the menu or via
-`pkill -x CapNote`.
-
-> **Note**: while the project still ships as a bare executable, every
-> rebuild changes its code-signing identity, which means macOS will
-> ask you to re-authorize Keychain access for the saved API token on
-> each upgrade. A signed `.app` bundle (planned) will fix this.
+> **Heads-up**: the build is ad-hoc-signed. Each release ships with a
+> different signing identity, so macOS will re-prompt for Keychain
+> access to the stored API token after each upgrade until the project
+> is properly notarized.
 
 ## Building from source
 
-Requires Xcode 15 (or the matching command-line tools) for Swift 5.9.
+Requires a Swift toolchain that can resolve recent SPM dependencies
+(KeyboardShortcuts ≥ 2.4, Sparkle ≥ 2.9). On macOS use Xcode 16+.
+
+For a quick development run as a bare CLI process:
 
 ```sh
 git clone https://github.com/lardissone/cap-note.git
 cd cap-note
-swift build -c release
-.build/release/CapNote
+swift run -c release
 ```
 
-To open in Xcode and run from there:
+To produce a real `.app` bundle (matching what the release pipeline
+ships), run:
+
+```sh
+bin/make-app.sh 0.0.0-dev      # → dist/CapNote.app, ad-hoc signed
+open dist/CapNote.app
+```
+
+Pass `universal` as the second argument for a fat arm64 + x86_64 build.
+Set `CODESIGN_IDENTITY` in the environment to sign with a real
+Developer ID instead of the default ad-hoc identity.
+
+To open the source in Xcode for editing/debugging:
 
 ```sh
 xed .
 ```
-
-A proper signed `.app` bundle is not yet provided — you run the binary directly. The menu bar icon appears as soon as the process starts; quitting from the menu (or `^C` in the terminal) terminates it.
 
 ## Usage
 
