@@ -5,5 +5,12 @@
         <link>https://github.com/lardissone/cap-note</link>
         <description>Quick notes to Capacities, from your menu bar.</description>
         <language>en</language>
+        <item>
+            <title>Version 0.2.4</title>
+            <sparkle:releaseNotesLink>https://github.com/lardissone/cap-note/releases/tag/v0.2.4</sparkle:releaseNotesLink>
+            <pubDate>Fri, 08 May 2026 16:35:46 +0000</pubDate>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/lardissone/cap-note/releases/download/v0.2.4/CapNote-0.2.4.zip" sparkle:version="0.2.4" sparkle:shortVersionString="0.2.4" length="1647836" type="application/octet-stream" sparkle:edSignature="qCkcqpsN1aJytJNyMEftF2hZsiclHxjOqahdsLyuwwxHo/nYipsRCLdz4W/aXK1zbnKisblualPpifQ9jX+kDg==" />
+        </item>
     </channel>
 </rss>
