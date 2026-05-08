@@ -32,6 +32,10 @@ jobs:
           KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
 
+          # Mark the runtime-generated keychain password as a secret so any
+          # accidental future log line containing it is redacted by the runner.
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+
           echo "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
@@ -56,7 +60,6 @@ jobs:
           rm -f "$RUNNER_TEMP/cert.p12"
 
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
-          echo "::add-mask::$KEYCHAIN_PASSWORD"
 
       - name: Resolve signing identity
         id: identity

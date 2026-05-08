@@ -1,6 +1,5 @@
 # Swift Package Manager
 .build/
-Package.resolved
 .swiftpm/
 
 # Xcode
@@ -22,3 +21,6 @@ dist/
 *.app
 *.dSYM.zip
 *.dSYM
+
+# Icon generation intermediates (only AppIcon.icns is committed)
+Resources/AppIcon.iconset/
