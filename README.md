@@ -113,23 +113,19 @@ for the full walk-through.
 
 ## Auto-update (Sparkle)
 
-The app links Sparkle and exposes both a "Check for Updates…" item in
-the menu bar and the matching toggles in *Settings → Updates*. For the
-update flow to actually fetch anything, the bundled `Info.plist` of the
-shipped `.app` needs:
+The app links Sparkle and exposes a *Check for Updates…* menu-bar item
+plus the matching toggles in *Settings → Updates*. The bundled
+`Info.plist` declares:
 
-- `SUFeedURL` — public URL of the appcast XML feed.
-- `SUPublicEDKey` — base64-encoded EdDSA public key matching the
-  private key used to sign each release zip.
+- `SUFeedURL` → `https://lardissone.github.io/cap-note/appcast.xml`
+- `SUPublicEDKey` → the EdDSA public key of the maintainer's signing
+  keypair.
 
-The first proper bundled release will also need the `appcast.xml` to be
-hosted somewhere stable (GitHub Pages on this repo is the typical
-choice) and to be regenerated for every published release using
-Sparkle's `generate_appcast` tool.
-
-Until that bundled build is in place, `Updater` and the Sparkle UI are
-wired correctly but updates will fail to fetch — the wiring stays the
-same.
+The release pipeline signs every published zip with the matching
+private key (held in a GitHub secret) and pushes a refreshed
+`appcast.xml` to the `gh-pages` branch on every tag. See
+[`docs/appcast-setup.md`](./docs/appcast-setup.md) for the one-time
+setup steps.
 
 ## License
 

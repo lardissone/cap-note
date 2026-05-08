@@ -20,6 +20,11 @@ APP_NAME="CapNote"
 BUNDLE_ID="io.capacities.cap-note"
 DEPLOYMENT_TARGET="14.0"
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
+# EdDSA public key Sparkle uses to verify update signatures. Public on
+# purpose: anyone can read it, only the corresponding private key (held
+# in the maintainer's keychain / GitHub secret) can produce valid
+# signatures for new releases.
+SU_PUBLIC_ED_KEY="SrfAn540iTdY174yQhMIyqSoAkCwh66UDziuy8EPwxQ="
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -174,6 +179,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <true/>
     <key>SUFeedURL</key>
     <string>https://lardissone.github.io/cap-note/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>$SU_PUBLIC_ED_KEY</string>
     <key>SUEnableAutomaticChecks</key>
     <true/>
 </dict>
