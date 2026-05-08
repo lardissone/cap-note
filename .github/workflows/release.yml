@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    name: Build & publish release
+    name: Build, sign, notarize & publish
     runs-on: macos-15
     env:
       TAG: ${{ github.ref_name }}
@@ -24,20 +24,84 @@ jobs:
       - name: Show Swift version
         run: swift --version
 
-      - name: Build CapNote.app
+      - name: Import Developer ID code-signing certificate
+        env:
+          CERT_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          CERT_P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_P12_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+
+          echo "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$RUNNER_TEMP/cert.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$CERT_P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Make the build keychain searchable by codesign while keeping
+          # the user's existing keychains around.
+          existing="$(security list-keychains -d user | tr -d '"' | xargs)"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $existing
+
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+
+      - name: Resolve signing identity
+        id: identity
+        run: |
+          identity=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            | awk -F'"' '/Developer ID Application/ {print $2; exit}')
+          if [[ -z "$identity" ]]; then
+            echo "No 'Developer ID Application' identity found in the imported keychain."
+            exit 1
+          fi
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+
+      - name: Build & sign CapNote.app
+        env:
+          CODESIGN_IDENTITY: ${{ steps.identity.outputs.identity }}
         run: |
           version="${TAG#v}"
           bin/make-app.sh "$version"
 
+      - name: Notarize CapNote.app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          notarize_zip="$RUNNER_TEMP/CapNote-notarize.zip"
+          ditto -c -k --keepParent dist/CapNote.app "$notarize_zip"
+
+          xcrun notarytool submit "$notarize_zip" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --wait
+
+          rm "$notarize_zip"
+
+          xcrun stapler staple dist/CapNote.app
+          xcrun stapler validate dist/CapNote.app
+
       - name: Stage release artifact
         run: |
           version="${TAG#v}"
-          mkdir -p stage
-          cp -R dist/CapNote.app stage/
-          cd stage
-          zip -ry "../CapNote-${version}.zip" CapNote.app
-          cd ..
-          shasum -a 256 "CapNote-${version}.zip" > "CapNote-${version}.zip.sha256"
+          artifact="CapNote-${version}.zip"
+          ditto -c -k --keepParent dist/CapNote.app "$artifact"
+          shasum -a 256 "$artifact" > "${artifact}.sha256"
 
       - name: Create GitHub release
         env:
@@ -49,3 +113,10 @@ jobs:
             --generate-notes \
             "CapNote-${version}.zip" \
             "CapNote-${version}.zip.sha256"
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          if [[ -n "${KEYCHAIN_PATH:-}" && -f "$KEYCHAIN_PATH" ]]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi

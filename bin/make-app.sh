@@ -6,9 +6,11 @@
 #   bin/make-app.sh 0.1.0            → builds for the host arch with the given version
 #   bin/make-app.sh 0.1.0 universal  → builds a universal (arm64 + x86_64) bundle
 #
-# The resulting bundle is placed in dist/CapNote.app and ad-hoc code-signed.
-# When a real Developer ID identity is exported, set CODESIGN_IDENTITY
-# to that identity name and the script will use it instead of "-".
+# Code-signing identity is taken from the CODESIGN_IDENTITY environment
+# variable. The default ("-") is ad-hoc, suitable for local development.
+# When set to a real "Developer ID Application: ..." identity the script
+# also enables hardened runtime and a secure timestamp, which is what
+# notarization requires.
 
 set -euo pipefail
 
@@ -123,25 +125,38 @@ SPARKLE_DIR="$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
 # differences between Sparkle's prebuilt artifact and our identity.
 find "$APP_BUNDLE" -type d -name "_CodeSignature" -prune -exec rm -rf {} +
 
+# Choose signing options based on whether this is ad-hoc or a real identity.
+SIGN_OPTS=(--force)
+PRESERVE_INNER_OPTS=()
+if [[ "$CODESIGN_IDENTITY" != "-" ]]; then
+    SIGN_OPTS+=(--options runtime --timestamp)
+    # Sparkle's XPC services and helper apps ship with specific
+    # entitlements. Preserve them when re-signing so they keep working.
+    PRESERVE_INNER_OPTS=(--preserve-metadata=entitlements,flags,runtime)
+fi
+
 # Sign innermost components first, then walk outwards.
 shopt -s nullglob
 for xpc in "$SPARKLE_DIR/Versions/B/XPCServices/"*.xpc; do
-    codesign --force --sign "$CODESIGN_IDENTITY" "$xpc"
+    codesign "${SIGN_OPTS[@]}" "${PRESERVE_INNER_OPTS[@]}" \
+        --sign "$CODESIGN_IDENTITY" "$xpc"
 done
 shopt -u nullglob
 
 if [[ -d "$SPARKLE_DIR/Versions/B/Updater.app" ]]; then
-    codesign --force --deep --sign "$CODESIGN_IDENTITY" \
+    codesign "${SIGN_OPTS[@]}" --deep "${PRESERVE_INNER_OPTS[@]}" \
+        --sign "$CODESIGN_IDENTITY" \
         "$SPARKLE_DIR/Versions/B/Updater.app"
 fi
 
 if [[ -f "$SPARKLE_DIR/Versions/B/Autoupdate" ]]; then
-    codesign --force --sign "$CODESIGN_IDENTITY" \
+    codesign "${SIGN_OPTS[@]}" "${PRESERVE_INNER_OPTS[@]}" \
+        --sign "$CODESIGN_IDENTITY" \
         "$SPARKLE_DIR/Versions/B/Autoupdate"
 fi
 
-codesign --force --sign "$CODESIGN_IDENTITY" "$SPARKLE_DIR"
-codesign --force --deep --sign "$CODESIGN_IDENTITY" "$APP_BUNDLE"
+codesign "${SIGN_OPTS[@]}" --sign "$CODESIGN_IDENTITY" "$SPARKLE_DIR"
+codesign "${SIGN_OPTS[@]}" --deep --sign "$CODESIGN_IDENTITY" "$APP_BUNDLE"
 
 echo "==> Verifying signature"
 codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"

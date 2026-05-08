@@ -26,24 +26,17 @@ A tiny menubar-only macOS app that posts quick notes to your [Capacities](https:
 1. Download `CapNote-x.y.z.zip` from
    [GitHub Releases](https://github.com/lardissone/cap-note/releases/latest).
 2. Unzip it — you'll get `CapNote.app`.
-3. Drag `CapNote.app` into `/Applications`.
-4. Because the build is ad-hoc-signed (not yet notarized), macOS
-   Gatekeeper blocks it on first launch. Clear the quarantine
-   attribute once:
+3. Drag it into `/Applications`.
+4. Open **CapNote** from Launchpad or `/Applications`. macOS will show
+   the standard "downloaded from the internet, are you sure?" dialog
+   the first time — accept it. The note icon shows up in the menu bar.
 
-   ```sh
-   xattr -dr com.apple.quarantine /Applications/CapNote.app
-   ```
+Quit via the menu's *Quit CapNote* or `pkill -x CapNote`.
 
-5. Open **CapNote** from Launchpad or `/Applications`. The note icon
-   shows up in the menu bar.
-
-To quit: use the menu's "Quit CapNote" or run `pkill -x CapNote`.
-
-> **Heads-up**: the build is ad-hoc-signed. Each release ships with a
-> different signing identity, so macOS will re-prompt for Keychain
-> access to the stored API token after each upgrade until the project
-> is properly notarized.
+> Releases are signed with a Developer ID and notarized by Apple, so
+> Gatekeeper accepts them without any `xattr` workaround. Builds
+> produced locally with the default ad-hoc identity still need
+> `xattr -dr com.apple.quarantine` to launch from outside Xcode.
 
 ## Building from source
 
@@ -95,15 +88,28 @@ xed .
 
 ## Releases
 
-Pushing a Git tag matching `v*` (for example `v0.1.0`) triggers
-`.github/workflows/release.yml`, which builds the release binary on a
-`macos-14` runner, zips it, and publishes a GitHub Release with the
-zip + SHA-256 checksum attached.
+Pushing a Git tag matching `v*` (for example `v0.2.0`) triggers
+`.github/workflows/release.yml`, which:
+
+1. Imports the Developer ID certificate from GitHub secrets into a
+   temporary keychain.
+2. Builds `CapNote.app`, signs every nested component (Sparkle XPC
+   services, Updater.app, Autoupdate, framework, app) with hardened
+   runtime + secure timestamp.
+3. Submits the bundle to Apple's notary service and waits for the
+   verdict.
+4. Staples the notarization ticket onto the bundle.
+5. Publishes the stapled `.app` zipped + SHA-256 sidecar as a GitHub
+   Release.
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
+
+The first time you set this up you need to add a handful of secrets to
+the repository — see [`docs/release-signing.md`](./docs/release-signing.md)
+for the full walk-through.
 
 ## Auto-update (Sparkle)
 
