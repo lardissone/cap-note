@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: macos-14
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build release binary
+        run: swift build -c release
+
+      - name: Stage release artifact
+        run: |
+          mkdir -p dist
+          cp .build/release/CapNote dist/CapNote
+          version="${TAG#v}"
+          cd dist
+          zip -j "CapNote-${version}.zip" CapNote
+          shasum -a 256 "CapNote-${version}.zip" > "CapNote-${version}.zip.sha256"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${TAG#v}"
+          gh release create "$TAG" \
+            --title "CapNote $TAG" \
+            --generate-notes \
+            "dist/CapNote-${version}.zip" \
+            "dist/CapNote-${version}.zip.sha256"

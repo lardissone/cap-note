@@ -19,6 +19,12 @@ struct CapNoteApp: App {
 
             Divider()
 
+            Button("Check for Updates…") {
+                Updater.controller.checkForUpdates(nil)
+            }
+
+            Divider()
+
             Button("Quit CapNote") {
                 NSApplication.shared.terminate(nil)
             }

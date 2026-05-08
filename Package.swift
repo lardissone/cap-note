@@ -10,13 +10,15 @@ let package = Package(
         .executable(name: "CapNote", targets: ["CapNote"])
     ],
     dependencies: [
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.2.1")
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.2.1"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.5.0")
     ],
     targets: [
         .executableTarget(
             name: "CapNote",
             dependencies: [
-                .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts")
+                .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
+                .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/CapNote"
         ),

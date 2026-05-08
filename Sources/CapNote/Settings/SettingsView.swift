@@ -13,6 +13,7 @@ struct SettingsView: View {
                     GeneralSection(settings: settings)
                     AccountSection(state: state, settings: settings)
                     NoteFormattingSection(settings: settings)
+                    UpdatesSection()
                 }
                 .padding(20)
             }

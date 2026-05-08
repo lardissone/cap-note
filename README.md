@@ -57,6 +57,38 @@ A proper signed `.app` bundle is not yet provided — you run the binary directl
 | `Esc` | Close the note (or, when on the settings face, flip back to the note) |
 | `⌘+,` | Toggle between note and settings face |
 
+## Releases
+
+Pushing a Git tag matching `v*` (for example `v0.1.0`) triggers
+`.github/workflows/release.yml`, which builds the release binary on a
+`macos-14` runner, zips it, and publishes a GitHub Release with the
+zip + SHA-256 checksum attached.
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+## Auto-update (Sparkle)
+
+The app links Sparkle and exposes both a "Check for Updates…" item in
+the menu bar and the matching toggles in *Settings → Updates*. For the
+update flow to actually fetch anything, the bundled `Info.plist` of the
+shipped `.app` needs:
+
+- `SUFeedURL` — public URL of the appcast XML feed.
+- `SUPublicEDKey` — base64-encoded EdDSA public key matching the
+  private key used to sign each release zip.
+
+The first proper bundled release will also need the `appcast.xml` to be
+hosted somewhere stable (GitHub Pages on this repo is the typical
+choice) and to be regenerated for every published release using
+Sparkle's `generate_appcast` tool.
+
+Until that bundled build is in place, `Updater` and the Sparkle UI are
+wired correctly but updates will fail to fetch — the wiring stays the
+same.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
