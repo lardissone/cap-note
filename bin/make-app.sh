@@ -28,18 +28,58 @@ echo "==> Building $APP_NAME $VERSION ($ARCH_MODE)"
 
 RPATH_FLAGS=(-Xlinker -rpath -Xlinker "@executable_path/../Frameworks")
 
+run_swift_build() {
+    case "$ARCH_MODE" in
+        host)
+            swift build -c release "${RPATH_FLAGS[@]}"
+            ;;
+        universal)
+            swift build -c release --arch arm64 --arch x86_64 "${RPATH_FLAGS[@]}"
+            ;;
+        *)
+            echo "Unknown arch mode: $ARCH_MODE (expected 'host' or 'universal')"
+            exit 1
+            ;;
+    esac
+}
+
+run_swift_build
+
+# SwiftPM (with swift-tools-version 5.x) generates a `Bundle.module`
+# accessor that only looks for resource bundles next to
+# `Bundle.main.bundleURL`. For a CLI binary that is the executable's
+# directory, but for a real `.app` it is the .app root — and macOS
+# requires that everything live under `Contents/`. Patch the generated
+# accessor so it looks under `Contents/Resources/` instead, then
+# re-build to pick the change up.
+ACCESSOR_FILES=()
+while IFS= read -r -d '' file; do
+    ACCESSOR_FILES+=("$file")
+done < <(find "$REPO_ROOT/.build" -type f -name "resource_bundle_accessor.swift" -path "*/release/*" -print0 2>/dev/null)
+
+NEEDS_REBUILD=0
+for accessor in "${ACCESSOR_FILES[@]}"; do
+    if ! grep -q 'Contents/Resources' "$accessor"; then
+        echo "==> Patching $(basename "$(dirname "$(dirname "$accessor")")")/resource_bundle_accessor.swift for .app layout"
+        sed -i.bak \
+            's|Bundle.main.bundleURL.appendingPathComponent|Bundle.main.bundleURL.appendingPathComponent("Contents/Resources").appendingPathComponent|' \
+            "$accessor"
+        rm -f "${accessor}.bak"
+        NEEDS_REBUILD=1
+    fi
+done
+
+if [[ $NEEDS_REBUILD -eq 1 ]]; then
+    echo "==> Re-linking with patched resource accessors"
+    run_swift_build
+fi
+
 case "$ARCH_MODE" in
     host)
-        swift build -c release "${RPATH_FLAGS[@]}"
         BIN_PATH="$REPO_ROOT/.build/release/$APP_NAME"
         ;;
     universal)
-        swift build -c release --arch arm64 --arch x86_64 "${RPATH_FLAGS[@]}"
         BIN_PATH="$REPO_ROOT/.build/apple/Products/Release/$APP_NAME"
-        ;;
-    *)
-        echo "Unknown arch mode: $ARCH_MODE (expected 'host' or 'universal')"
-        exit 1
         ;;
 esac
 
@@ -73,6 +113,20 @@ cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 cp -R "$SPARKLE_FRAMEWORK_SRC" "$APP_BUNDLE/Contents/Frameworks/"
+
+# SwiftPM resource bundles (e.g. KeyboardShortcuts_KeyboardShortcuts.bundle).
+# Copied into `Contents/Resources/` — the standard macOS bundle layout.
+# The patched resource accessor injected above looks for them there.
+BUILD_PRODUCTS_DIR="$(cd "$(dirname "$BIN_PATH")" && pwd -P)"
+echo "==> Copying SwiftPM resource bundles from $BUILD_PRODUCTS_DIR"
+shopt -s nullglob
+for bundle in "$BUILD_PRODUCTS_DIR"/*.bundle; do
+    [[ -d "$bundle" ]] || continue
+    bundle_name="$(basename "$bundle")"
+    echo "    $bundle_name"
+    cp -R "$bundle" "$APP_BUNDLE/Contents/Resources/$bundle_name"
+done
+shopt -u nullglob
 
 ICON_SRC="$REPO_ROOT/Resources/AppIcon.icns"
 if [[ ! -f "$ICON_SRC" ]]; then
