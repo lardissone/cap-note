@@ -8,13 +8,15 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            VStack(spacing: 16) {
-                GeneralSection(settings: settings)
-                AccountSection(state: state, settings: settings)
-                NoteFormattingSection(settings: settings)
+            ScrollView {
+                VStack(spacing: 16) {
+                    GeneralSection(settings: settings)
+                    AccountSection(state: state, settings: settings)
+                    NoteFormattingSection(settings: settings)
+                }
+                .padding(20)
             }
-            .padding(20)
-            Spacer(minLength: 0)
+            .scrollIndicators(.never)
         }
     }
 
