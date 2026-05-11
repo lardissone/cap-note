@@ -6,6 +6,13 @@
         <description>Quick notes to Capacities, from your menu bar.</description>
         <language>en</language>
         <item>
+            <title>Version 0.3.0</title>
+            <sparkle:releaseNotesLink>https://github.com/lardissone/cap-note/releases/tag/v0.3.0</sparkle:releaseNotesLink>
+            <pubDate>Mon, 11 May 2026 19:02:33 +0000</pubDate>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/lardissone/cap-note/releases/download/v0.3.0/CapNote-0.3.0.zip" sparkle:version="0.3.0" sparkle:shortVersionString="0.3.0" length="1659081" type="application/octet-stream" sparkle:edSignature="qhq7zlbTup0GP46cLkJ4hFBq5VvxSkyozc3GdFtZulTWz8VjLGwaXyp7tC9zF4lDhgAEFi4+NN4s/1bcxIJeDw==" />
+        </item>
+        <item>
             <title>Version 0.2.4</title>
             <sparkle:releaseNotesLink>https://github.com/lardissone/cap-note/releases/tag/v0.2.4</sparkle:releaseNotesLink>
             <pubDate>Fri, 08 May 2026 16:35:46 +0000</pubDate>
