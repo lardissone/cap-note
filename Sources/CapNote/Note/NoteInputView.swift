@@ -3,6 +3,7 @@ import SwiftUI
 
 struct NoteInputView: View {
     @Bindable var state: AppState
+    @Bindable var settings: AppSettings
     let onSubmit: () -> Void
     let onSettingsTap: () -> Void
 
@@ -37,8 +38,11 @@ struct NoteInputView: View {
     }
 
     private var footer: some View {
-        HStack {
+        HStack(spacing: 8) {
             statusLabel
+            if state.spaces.count > 1 {
+                spacePicker
+            }
             Spacer(minLength: 8)
             Button(action: onSettingsTap) {
                 Image(systemName: "gearshape")
@@ -52,6 +56,42 @@ struct NoteInputView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(.thinMaterial)
+    }
+
+    private var spacePicker: some View {
+        Menu {
+            ForEach(state.spaces) { space in
+                Button {
+                    settings.selectedSpaceId = space.id
+                } label: {
+                    if space.id == settings.selectedSpaceId {
+                        Label(space.title, systemImage: "checkmark")
+                    } else {
+                        Text(space.title)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(currentSpaceTitle)
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+            }
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .tint(Color.secondary)
+        .foregroundStyle(.secondary)
+        .help("Send to space")
+    }
+
+    private var currentSpaceTitle: String {
+        if let id = settings.selectedSpaceId,
+           let space = state.spaces.first(where: { $0.id == id }) {
+            return space.title
+        }
+        return state.spaces.first?.title ?? "Select space"
     }
 
     private func handleEscape() {

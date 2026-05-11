@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NoteCardView: View {
     @Bindable var state: AppState
-    let settings: AppSettings
+    @Bindable var settings: AppSettings
     let onSubmit: () -> Void
     let onClose: () -> Void
 
@@ -11,6 +11,7 @@ struct NoteCardView: View {
             FlipFace(visible: state.face == .input, mirrored: false) {
                 NoteInputView(
                     state: state,
+                    settings: settings,
                     onSubmit: onSubmit,
                     onSettingsTap: { state.face = .settings }
                 )

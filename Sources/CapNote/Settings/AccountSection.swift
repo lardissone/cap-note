@@ -87,12 +87,10 @@ struct AccountSection: View {
             statusMessage = "Connected — \(spaces.count) space(s) loaded"
             statusIsError = false
 
-            if let selected = settings.selectedSpaceId,
-               !spaces.contains(where: { $0.id == selected }) {
-                settings.selectedSpaceId = spaces.first?.id
-            } else if settings.selectedSpaceId == nil {
-                settings.selectedSpaceId = spaces.first?.id
-            }
+            settings.selectedSpaceId = SpaceSelection.resolve(
+                spaces: spaces,
+                current: settings.selectedSpaceId
+            )
         } catch let error as CapacitiesError {
             statusMessage = error.errorDescription
             statusIsError = true
