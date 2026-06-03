@@ -127,6 +127,12 @@ private key (held in a GitHub secret) and pushes a refreshed
 [`docs/appcast-setup.md`](./docs/appcast-setup.md) for the one-time
 setup steps.
 
+## Support
+
+If CapNote is useful to you, you can support its development:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L2Z120QWZL)
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
