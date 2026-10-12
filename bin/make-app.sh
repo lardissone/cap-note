@@ -95,9 +95,9 @@ cp -R "$SPARKLE_FRAMEWORK_SRC" "$APP_BUNDLE/Contents/Frameworks/"
 # For an app, `bundleURL` is the .app root — and macOS forbids
 # anything except `Contents/` there. We patch the embedded bundle
 # name string in the executable, in place, to point at
-# `Contents/Resources/KS.bundle`. The replacement is shorter than the
-# original (43 → 43 bytes including null terminator) so other Mach-O
-# offsets are unchanged.
+# `Contents/Resources/KeyboardShortcut.bundle`. Keep exactly the same
+# UTF-8 length to preserve Swift string lengths and Mach-O offsets.
+# Null padding would become part of the Swift path.
 BUILD_PRODUCTS_DIR="$(cd "$(dirname "$BIN_PATH")" && pwd -P)"
 echo "==> Patching embedded KeyboardShortcuts bundle path"
 python3 - "$APP_BUNDLE/Contents/MacOS/$APP_NAME" <<'PYEOF'
@@ -106,9 +106,9 @@ import sys
 binary_path = sys.argv[1]
 
 needle = b"KeyboardShortcuts_KeyboardShortcuts.bundle\x00"
-replacement_text = b"Contents/Resources/KS.bundle"
-# Pad with null bytes so the literal stays the same length.
-replacement = replacement_text + b"\x00" * (len(needle) - len(replacement_text))
+replacement_text = b"Contents/Resources/KeyboardShortcut.bundle"
+# Keep both Swift string length metadata and Mach-O offsets valid.
+replacement = replacement_text + b"\x00"
 assert len(replacement) == len(needle), "replacement length mismatch"
 
 with open(binary_path, "rb") as f:
@@ -124,10 +124,10 @@ else:
     print(f"    patched {count} occurrence(s)")
 PYEOF
 
-echo "==> Copying SwiftPM resource bundles to Contents/Resources/ as KS.bundle"
+echo "==> Copying SwiftPM resource bundles to Contents/Resources/ as KeyboardShortcut.bundle"
 ks_bundle_src="$BUILD_PRODUCTS_DIR/KeyboardShortcuts_KeyboardShortcuts.bundle"
 if [[ -d "$ks_bundle_src" ]]; then
-    cp -R "$ks_bundle_src" "$APP_BUNDLE/Contents/Resources/KS.bundle"
+    cp -R "$ks_bundle_src" "$APP_BUNDLE/Contents/Resources/KeyboardShortcut.bundle"
 fi
 
 ICON_SRC="$REPO_ROOT/Resources/AppIcon.icns"
@@ -204,22 +204,23 @@ if [[ "$CODESIGN_IDENTITY" != "-" ]]; then
     PRESERVE_INNER_OPTS=(--preserve-metadata=entitlements,flags,runtime)
 fi
 
-# Sign innermost components first, then walk outwards.
+# Sign innermost components first, then walk outwards. The guarded array
+# expansion also supports an empty array under macOS Bash 3 with set -u.
 shopt -s nullglob
 for xpc in "$SPARKLE_DIR/Versions/B/XPCServices/"*.xpc; do
-    codesign "${SIGN_OPTS[@]}" "${PRESERVE_INNER_OPTS[@]}" \
+    codesign "${SIGN_OPTS[@]}" ${PRESERVE_INNER_OPTS[@]+"${PRESERVE_INNER_OPTS[@]}"} \
         --sign "$CODESIGN_IDENTITY" "$xpc"
 done
 shopt -u nullglob
 
 if [[ -d "$SPARKLE_DIR/Versions/B/Updater.app" ]]; then
-    codesign "${SIGN_OPTS[@]}" --deep "${PRESERVE_INNER_OPTS[@]}" \
+    codesign "${SIGN_OPTS[@]}" --deep ${PRESERVE_INNER_OPTS[@]+"${PRESERVE_INNER_OPTS[@]}"} \
         --sign "$CODESIGN_IDENTITY" \
         "$SPARKLE_DIR/Versions/B/Updater.app"
 fi
 
 if [[ -f "$SPARKLE_DIR/Versions/B/Autoupdate" ]]; then
-    codesign "${SIGN_OPTS[@]}" "${PRESERVE_INNER_OPTS[@]}" \
+    codesign "${SIGN_OPTS[@]}" ${PRESERVE_INNER_OPTS[@]+"${PRESERVE_INNER_OPTS[@]}"} \
         --sign "$CODESIGN_IDENTITY" \
         "$SPARKLE_DIR/Versions/B/Autoupdate"
 fi
