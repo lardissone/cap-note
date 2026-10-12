@@ -11,7 +11,7 @@ A tiny menubar-only macOS app that posts quick notes to your [Capacities](https:
 - `⌘+Enter` sends the note to your Capacities Daily Note and closes the window.
 - Built-in settings (rotated in via a 3D flip from the same window):
   - API token (stored securely in the macOS Keychain).
-  - Target space (loaded from your Capacities account).
+  - Target space (loaded from your Capacities API token).
   - Window position: centered on screen, or where the cursor is.
   - Optional separator prepended to each note (default `---\n\n`).
   - Optional timestamp inclusion in the daily note.
@@ -19,7 +19,7 @@ A tiny menubar-only macOS app that posts quick notes to your [Capacities](https:
 ## Requirements
 
 - macOS 14 (Sonoma) or later.
-- A [Capacities](https://capacities.io) account with API access enabled (Settings → Capacities API).
+- A [Capacities](https://capacities.io) account with API access and a current personal API token with read and write permissions (Settings → Capacities API).
 
 ## Install
 
@@ -73,10 +73,26 @@ xed .
 
 1. Launch the app — a small note icon appears in your menu bar.
 2. Click the menu bar icon and choose **Settings…** — the note window opens with the settings face showing.
-3. Paste your Capacities API token, click **Test & Load spaces**, then pick your space from the dropdown.
+3. Paste your personal Capacities API token, click **Test & Load spaces**, and check the space shown in the dropdown. Each token accesses one space; use a different token to change spaces.
 4. Set a **Global shortcut** (e.g. `⌘⌥N`). Optionally tweak window position, separator, and timestamp.
 5. Tap the back arrow (or press `Esc`) to flip back to the note input.
 6. From any app, press your shortcut → write a note → `⌘+Enter` → it lands in your Capacities Daily Note.
+
+### Updating from the Beta API
+
+Generate a new token for the current API in **Settings → Capacities API**, selecting
+your target space and read/write access. Replace your old Beta token in CapNote's
+existing API token field and click **Test & Load spaces**. The key remains stored
+in the macOS Keychain. Your shortcut, separator, timestamp, and window settings
+are preserved.
+
+CapNote uses API v1 (`1.0.0`) and explicitly sends your Mac's local calendar day.
+Capacities processes daily-note additions asynchronously, so a successful send
+may take a moment to appear. If a request times out, check your daily note before
+sending again to avoid duplicates.
+
+See the [API migration guide](https://developers.capacities.io/api/overview/migration)
+and [authentication documentation](https://developers.capacities.io/api/overview/authentication).
 
 ### Keyboard shortcuts inside the window
 

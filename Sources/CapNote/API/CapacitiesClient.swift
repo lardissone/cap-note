@@ -1,21 +1,26 @@
 import Foundation
 
-/// Builds API request payloads from user settings. Pure, deterministic — easy to unit-test.
+/// Builds API payloads from user settings, with an injectable clock and time zone for tests.
 enum PayloadBuilder {
-    static let origin = "commandPalette"
-
     static func buildDailyNoteRequest(
         text: String,
-        spaceId: String,
         useSeparator: Bool,
         separatorString: String,
-        includeTimestamp: Bool
+        includeTimestamp: Bool,
+        now: Date = Date(),
+        timeZone: TimeZone = .current
     ) -> DailyNoteRequest {
-        let mdText = useSeparator ? separatorString + text : text
+        // The API expects the chosen calendar day labelled as UTC midnight,
+        // not the instant of local midnight converted to UTC.
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+
         return DailyNoteRequest(
-            spaceId: spaceId,
-            mdText: mdText,
-            origin: origin,
+            markdown: useSeparator ? separatorString + text : text,
+            date: formatter.string(from: now) + "T00:00:00.000Z",
             noTimeStamp: !includeTimestamp
         )
     }
@@ -37,10 +42,12 @@ struct CapacitiesClient {
     }
 
     func listSpaces() async throws -> [Space] {
-        let request = makeRequest(path: "/spaces", method: "GET", body: nil)
+        // API v1 tokens belong to one space. Keep the existing settings UI's
+        // list interface, populated with that single space.
+        let request = makeRequest(path: "/space", method: "GET", body: nil)
         let data = try await perform(request)
         do {
-            return try JSONDecoder().decode(SpacesResponse.self, from: data).spaces
+            return [try JSONDecoder().decode(Space.self, from: data)]
         } catch {
             throw CapacitiesError.decoding
         }
@@ -48,7 +55,7 @@ struct CapacitiesClient {
 
     func saveToDailyNote(_ payload: DailyNoteRequest) async throws {
         let body = try JSONEncoder().encode(payload)
-        let request = makeRequest(path: "/save-to-daily-note", method: "POST", body: body)
+        let request = makeRequest(path: "/blocks/daily-note/append", method: "POST", body: body)
         _ = try await perform(request)
     }
 
@@ -56,6 +63,7 @@ struct CapacitiesClient {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = method
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("1.0.0", forHTTPHeaderField: "X-Capacities-Api-Version")
         if body != nil {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = body
@@ -81,6 +89,8 @@ struct CapacitiesClient {
             return data
         case 401:
             throw CapacitiesError.unauthorized
+        case 403:
+            throw CapacitiesError.forbidden
         case 429:
             throw CapacitiesError.rateLimited
         default:

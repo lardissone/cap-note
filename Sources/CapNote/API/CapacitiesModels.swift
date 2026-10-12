@@ -10,14 +10,9 @@ struct Space: Codable, Identifiable, Hashable {
     }
 }
 
-struct SpacesResponse: Codable {
-    let spaces: [Space]
-}
-
 struct DailyNoteRequest: Codable, Equatable {
-    let spaceId: String
-    let mdText: String
-    let origin: String
+    let markdown: String
+    let date: String
     let noTimeStamp: Bool
 }
 
@@ -25,6 +20,7 @@ enum CapacitiesError: Error, LocalizedError, Equatable {
     case missingToken
     case missingSpace
     case unauthorized
+    case forbidden
     case rateLimited
     case server(status: Int)
     case decoding
@@ -38,6 +34,8 @@ enum CapacitiesError: Error, LocalizedError, Equatable {
             return "No space selected."
         case .unauthorized:
             return "Invalid API token."
+        case .forbidden:
+            return "Access denied. Check your API token's read and write permissions."
         case .rateLimited:
             return "Rate limit exceeded — try again in a moment."
         case .server(let status):
