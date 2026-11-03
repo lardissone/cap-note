@@ -69,20 +69,21 @@ struct AccountSection: View {
 
     private func testAndLoadSpaces() async {
         statusMessage = nil
-        do {
-            try settings.setApiToken(tokenInput)
-        } catch {
-            statusMessage = "Could not save token: \(error.localizedDescription)"
-            statusIsError = true
-            return
-        }
-
+        let token = tokenInput.trimmingCharacters(in: .whitespacesAndNewlines)
         isLoading = true
         defer { isLoading = false }
 
-        let client = CapacitiesClient(token: tokenInput)
+        let client = CapacitiesClient(token: token)
         do {
             let spaces = try await client.listSpaces()
+            // Validate before replacing the saved key and its associated space.
+            do {
+                try settings.setApiToken(token)
+            } catch {
+                statusMessage = "Could not save token: \(error.localizedDescription)"
+                statusIsError = true
+                return
+            }
             state.spaces = spaces
             statusMessage = "Connected — \(spaces.count) space(s) loaded"
             statusIsError = false

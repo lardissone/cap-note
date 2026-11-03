@@ -186,14 +186,13 @@ final class NotePanelController: NSObject {
             showConfigError("Configure your API token first", state: state)
             return
         }
-        guard let spaceId = settings.selectedSpaceId, !spaceId.isEmpty else {
+        guard settings.selectedSpaceId?.isEmpty == false else {
             showConfigError("Select a space first", state: state)
             return
         }
 
         let payload = PayloadBuilder.buildDailyNoteRequest(
             text: state.noteText,
-            spaceId: spaceId,
             useSeparator: settings.useSeparator,
             separatorString: settings.separatorString,
             includeTimestamp: settings.includeTimestamp
