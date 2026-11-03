@@ -2,22 +2,30 @@ import Foundation
 
 /// Builds API request payloads from user settings. Pure, deterministic — easy to unit-test.
 enum PayloadBuilder {
-    static let origin = "commandPalette"
-
     static func buildDailyNoteRequest(
         text: String,
-        spaceId: String,
         useSeparator: Bool,
         separatorString: String,
-        includeTimestamp: Bool
+        includeTimestamp: Bool,
+        now: Date = Date(),
+        timeZone: TimeZone = .current
     ) -> DailyNoteRequest {
-        let mdText = useSeparator ? separatorString + text : text
+        let markdown = useSeparator ? separatorString + text : text
         return DailyNoteRequest(
-            spaceId: spaceId,
-            mdText: mdText,
-            origin: origin,
-            noTimeStamp: !includeTimestamp
+            markdown: markdown,
+            noTimeStamp: !includeTimestamp,
+            date: dailyNoteDate(for: now, in: timeZone)
         )
+    }
+
+    /// The API identifies a daily note by its day at UTC midnight and defaults to the
+    /// server's today, so a note written late in the evening west of UTC would land on
+    /// tomorrow's page. Sending the user's local calendar day keeps it on the right one.
+    static func dailyNoteDate(for now: Date, in timeZone: TimeZone) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let day = calendar.dateComponents([.year, .month, .day], from: now)
+        return String(format: "%04d-%02d-%02dT00:00:00.000Z", day.year!, day.month!, day.day!)
     }
 }
 
@@ -36,11 +44,12 @@ struct CapacitiesClient {
         self.session = session
     }
 
-    func listSpaces() async throws -> [Space] {
-        let request = makeRequest(path: "/spaces", method: "GET", body: nil)
+    /// Returns the space the token is scoped to. Every token grants access to exactly one space.
+    func getSpace() async throws -> Space {
+        let request = makeRequest(path: "/space", method: "GET", body: nil)
         let data = try await perform(request)
         do {
-            return try JSONDecoder().decode(SpacesResponse.self, from: data).spaces
+            return try JSONDecoder().decode(Space.self, from: data)
         } catch {
             throw CapacitiesError.decoding
         }
@@ -48,7 +57,7 @@ struct CapacitiesClient {
 
     func saveToDailyNote(_ payload: DailyNoteRequest) async throws {
         let body = try JSONEncoder().encode(payload)
-        let request = makeRequest(path: "/save-to-daily-note", method: "POST", body: body)
+        let request = makeRequest(path: "/blocks/daily-note/append", method: "POST", body: body)
         _ = try await perform(request)
     }
 

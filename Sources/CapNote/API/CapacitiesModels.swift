@@ -10,20 +10,13 @@ struct Space: Codable, Identifiable, Hashable {
     }
 }
 
-struct SpacesResponse: Codable {
-    let spaces: [Space]
-}
-
 struct DailyNoteRequest: Codable, Equatable {
-    let spaceId: String
-    let mdText: String
-    let origin: String
+    let markdown: String
     let noTimeStamp: Bool
+    let date: String
 }
 
 enum CapacitiesError: Error, LocalizedError, Equatable {
-    case missingToken
-    case missingSpace
     case unauthorized
     case rateLimited
     case server(status: Int)
@@ -32,12 +25,8 @@ enum CapacitiesError: Error, LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .missingToken:
-            return "API token is not configured."
-        case .missingSpace:
-            return "No space selected."
         case .unauthorized:
-            return "Invalid API token."
+            return "Capacities rejected the connection. Connect the space again in settings."
         case .rateLimited:
             return "Rate limit exceeded — try again in a moment."
         case .server(let status):

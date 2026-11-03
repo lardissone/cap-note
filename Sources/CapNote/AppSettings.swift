@@ -52,20 +52,6 @@ final class AppSettings {
         }
     }
 
-    /// Reads the API token from the macOS Keychain. Returns `nil` when not set.
-    /// Token writes go through `setApiToken(_:)` so callers can react to errors.
-    var apiToken: String? {
-        Keychain.shared.read()
-    }
-
-    func setApiToken(_ value: String?) throws {
-        if let value, !value.isEmpty {
-            try Keychain.shared.save(value)
-        } else {
-            try Keychain.shared.delete()
-        }
-    }
-
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {

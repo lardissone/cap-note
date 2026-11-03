@@ -18,21 +18,18 @@ final class CapacitiesClientTests: XCTestCase {
         super.tearDown()
     }
 
-    // MARK: - listSpaces
+    // MARK: - getSpace
 
-    func test_listSpaces_returnsParsedSpaces() async throws {
+    func test_getSpace_returnsTokenSpace() async throws {
         MockURLProtocol.requestHandler = { request in
-            XCTAssertEqual(request.url?.path, "/spaces")
+            XCTAssertEqual(request.url?.path, "/space")
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(
                 request.value(forHTTPHeaderField: "Authorization"),
                 "Bearer test-token"
             )
             let body = """
-            {"spaces":[
-                {"id":"a-uuid","title":"Personal"},
-                {"id":"b-uuid","title":"Work"}
-            ]}
+            {"id":"a-uuid","title":"Personal","icon":{"type":"iconify","val":"ph-lightbulb"}}
             """
             return (
                 HTTPURLResponse(
@@ -45,15 +42,12 @@ final class CapacitiesClientTests: XCTestCase {
             )
         }
 
-        let spaces = try await client.listSpaces()
+        let space = try await client.getSpace()
 
-        XCTAssertEqual(spaces.count, 2)
-        XCTAssertEqual(spaces[0].id, "a-uuid")
-        XCTAssertEqual(spaces[0].title, "Personal")
-        XCTAssertEqual(spaces[1].title, "Work")
+        XCTAssertEqual(space, Space(id: "a-uuid", title: "Personal"))
     }
 
-    func test_listSpaces_unauthorized_throwsCapacitiesError() async {
+    func test_getSpace_unauthorized_throwsCapacitiesError() async {
         MockURLProtocol.requestHandler = { request in
             (
                 HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!,
@@ -62,7 +56,7 @@ final class CapacitiesClientTests: XCTestCase {
         }
 
         do {
-            _ = try await client.listSpaces()
+            _ = try await client.getSpace()
             XCTFail("Expected unauthorized error")
         } catch let error as CapacitiesError {
             XCTAssertEqual(error, .unauthorized)
@@ -75,26 +69,28 @@ final class CapacitiesClientTests: XCTestCase {
 
     func test_saveToDailyNote_postsBodyAndAuthHeader() async throws {
         let request = DailyNoteRequest(
-            spaceId: "space-1",
-            mdText: "---\n\nHello",
-            origin: "commandPalette",
-            noTimeStamp: true
+            markdown: "---\n\nHello",
+            noTimeStamp: true,
+            date: "2026-11-03T00:00:00.000Z"
         )
 
         MockURLProtocol.requestHandler = { req in
-            XCTAssertEqual(req.url?.path, "/save-to-daily-note")
+            XCTAssertEqual(req.url?.path, "/blocks/daily-note/append")
             XCTAssertEqual(req.httpMethod, "POST")
             XCTAssertEqual(req.value(forHTTPHeaderField: "Authorization"), "Bearer test-token")
             XCTAssertEqual(req.value(forHTTPHeaderField: "Content-Type"), "application/json")
 
             // URLProtocol receives the body via httpBodyStream, not httpBody, in tests.
             let body = req.bodyData ?? Data()
-            let decoded = try JSONDecoder().decode(DailyNoteRequest.self, from: body)
-            XCTAssertEqual(decoded, request)
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            XCTAssertEqual(Set(json.keys), ["markdown", "noTimeStamp", "date"])
+            XCTAssertEqual(json["markdown"] as? String, "---\n\nHello")
+            XCTAssertEqual(json["noTimeStamp"] as? Bool, true)
+            XCTAssertEqual(json["date"] as? String, "2026-11-03T00:00:00.000Z")
 
             return (
-                HTTPURLResponse(url: req.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
-                Data("{}".utf8)
+                HTTPURLResponse(url: req.url!, statusCode: 204, httpVersion: nil, headerFields: nil)!,
+                Data()
             )
         }
 
@@ -111,7 +107,7 @@ final class CapacitiesClientTests: XCTestCase {
 
         do {
             try await client.saveToDailyNote(DailyNoteRequest(
-                spaceId: "x", mdText: "y", origin: "z", noTimeStamp: true
+                markdown: "y", noTimeStamp: true, date: "2026-11-03T00:00:00.000Z"
             ))
             XCTFail("Expected unauthorized error")
         } catch let error as CapacitiesError {
@@ -131,7 +127,7 @@ final class CapacitiesClientTests: XCTestCase {
 
         do {
             try await client.saveToDailyNote(DailyNoteRequest(
-                spaceId: "x", mdText: "y", origin: "z", noTimeStamp: true
+                markdown: "y", noTimeStamp: true, date: "2026-11-03T00:00:00.000Z"
             ))
             XCTFail("Expected rate limited error")
         } catch let error as CapacitiesError {
@@ -139,25 +135,5 @@ final class CapacitiesClientTests: XCTestCase {
         } catch {
             XCTFail("Unexpected error type: \(error)")
         }
-    }
-}
-
-private extension URLRequest {
-    /// URLProtocol receives the body as a stream rather than `httpBody`.
-    /// Drains it into Data for assertion purposes.
-    var bodyData: Data? {
-        guard let stream = httpBodyStream else { return httpBody }
-        stream.open()
-        defer { stream.close() }
-        var data = Data()
-        let bufferSize = 1024
-        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
-        defer { buffer.deallocate() }
-        while stream.hasBytesAvailable {
-            let read = stream.read(buffer, maxLength: bufferSize)
-            if read <= 0 { break }
-            data.append(buffer, count: read)
-        }
-        return data
     }
 }

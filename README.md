@@ -10,8 +10,8 @@ A tiny menubar-only macOS app that posts quick notes to your [Capacities](https:
 - Configurable global keyboard shortcut to summon a quick-note window from anywhere.
 - `⌘+Enter` sends the note to your Capacities Daily Note and closes the window.
 - Built-in settings (rotated in via a 3D flip from the same window):
-  - API token (stored securely in the macOS Keychain).
-  - Target space (loaded from your Capacities account).
+  - Connect one or more Capacities spaces with your Capacities account (OAuth; credentials stay in the macOS Keychain).
+  - Pick the target space right from the note window when more than one is connected.
   - Window position: centered on screen, or where the cursor is.
   - Optional separator prepended to each note (default `---\n\n`).
   - Optional timestamp inclusion in the daily note.
@@ -19,7 +19,7 @@ A tiny menubar-only macOS app that posts quick notes to your [Capacities](https:
 ## Requirements
 
 - macOS 14 (Sonoma) or later.
-- A [Capacities](https://capacities.io) account with API access enabled (Settings → Capacities API).
+- A [Capacities](https://capacities.io) account.
 
 ## Install
 
@@ -73,7 +73,7 @@ xed .
 
 1. Launch the app — a small note icon appears in your menu bar.
 2. Click the menu bar icon and choose **Settings…** — the note window opens with the settings face showing.
-3. Paste your Capacities API token, click **Test & Load spaces**, then pick your space from the dropdown.
+3. Click **Connect to Capacities**, sign in, and choose the space your notes should go to. Use **Add space** to connect more spaces.
 4. Set a **Global shortcut** (e.g. `⌘⌥N`). Optionally tweak window position, separator, and timestamp.
 5. Tap the back arrow (or press `Esc`) to flip back to the note input.
 6. From any app, press your shortcut → write a note → `⌘+Enter` → it lands in your Capacities Daily Note.
