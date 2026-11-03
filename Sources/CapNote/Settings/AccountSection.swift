@@ -4,35 +4,44 @@ struct AccountSection: View {
     @Bindable var state: AppState
     @Bindable var settings: AppSettings
 
-    @State private var tokenInput: String = ""
-    @State private var isLoading = false
+    @State private var isConnecting = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
 
     var body: some View {
         GroupBox("Capacities account") {
             VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("API token")
+                if state.spaces.isEmpty {
+                    Text("Connect a Capacities space to send notes to its daily note.")
                         .font(.callout)
-                    SecureField("Paste your Capacities API token", text: $tokenInput)
-                        .textFieldStyle(.roundedBorder)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(state.spaces) { space in
+                        HStack {
+                            Text(space.title)
+                            Spacer()
+                            Button("Disconnect") {
+                                Task { await disconnect(space) }
+                            }
+                            .disabled(isConnecting)
+                        }
+                    }
                 }
 
                 HStack(spacing: 10) {
                     Button {
-                        Task { await testAndLoadSpaces() }
+                        Task { await connect() }
                     } label: {
-                        if isLoading {
+                        if isConnecting {
                             HStack(spacing: 6) {
                                 ProgressView().controlSize(.small)
-                                Text("Loading…")
+                                Text("Waiting for Capacities…")
                             }
                         } else {
-                            Text("Test & Load spaces")
+                            Text(state.spaces.isEmpty ? "Connect to Capacities" : "Add space")
                         }
                     }
-                    .disabled(tokenInput.isEmpty || isLoading)
+                    .disabled(isConnecting)
 
                     if let statusMessage {
                         Label(statusMessage, systemImage: statusIsError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
@@ -42,61 +51,46 @@ struct AccountSection: View {
                             .lineLimit(2)
                     }
                 }
-
-                if !state.spaces.isEmpty {
-                    Picker("Space", selection: spaceBinding) {
-                        ForEach(state.spaces) { space in
-                            Text(space.title).tag(Optional(space.id))
-                        }
-                    }
-                    .pickerStyle(.menu)
-                }
             }
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .onAppear {
-            tokenInput = settings.apiToken ?? ""
+    }
+
+    private func connect() async {
+        statusMessage = nil
+        isConnecting = true
+        defer { isConnecting = false }
+
+        do {
+            let callbackScheme = OAuthConfig.capacities.callbackScheme
+            let space = try await ConnectionStore.shared.connect { url in
+                try await AuthorizationSession.shared.authorize(url: url, callbackScheme: callbackScheme)
+            }
+            settings.selectedSpaceId = space.id
+            try await state.reloadSpaces(settings: settings)
+            show("Connected to \(space.title)", isError: false)
+        } catch ConnectionError.cancelled {
+            return
+        } catch {
+            show(error.localizedDescription, isError: true)
         }
     }
 
-    private var spaceBinding: Binding<String?> {
-        Binding(
-            get: { settings.selectedSpaceId },
-            set: { settings.selectedSpaceId = $0 }
-        )
-    }
-
-    private func testAndLoadSpaces() async {
+    private func disconnect(_ space: Space) async {
         statusMessage = nil
         do {
-            try settings.setApiToken(tokenInput)
+            try await ConnectionStore.shared.disconnect(spaceId: space.id)
+            try await state.reloadSpaces(settings: settings)
+            show("Disconnected \(space.title)", isError: false)
         } catch {
-            statusMessage = "Could not save token: \(error.localizedDescription)"
-            statusIsError = true
-            return
+            try? await state.reloadSpaces(settings: settings)
+            show(error.localizedDescription, isError: true)
         }
+    }
 
-        isLoading = true
-        defer { isLoading = false }
-
-        let client = CapacitiesClient(token: tokenInput)
-        do {
-            let spaces = try await client.listSpaces()
-            state.spaces = spaces
-            statusMessage = "Connected — \(spaces.count) space(s) loaded"
-            statusIsError = false
-
-            settings.selectedSpaceId = SpaceSelection.resolve(
-                spaces: spaces,
-                current: settings.selectedSpaceId
-            )
-        } catch let error as CapacitiesError {
-            statusMessage = error.errorDescription
-            statusIsError = true
-        } catch {
-            statusMessage = error.localizedDescription
-            statusIsError = true
-        }
+    private func show(_ message: String, isError: Bool) {
+        statusMessage = message
+        statusIsError = isError
     }
 }

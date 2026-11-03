@@ -182,18 +182,12 @@ final class NotePanelController: NSObject {
         let trimmed = state.noteText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        guard let token = settings.apiToken, !token.isEmpty else {
-            showConfigError("Configure your API token first", state: state)
-            return
-        }
         guard let spaceId = settings.selectedSpaceId, !spaceId.isEmpty else {
-            showConfigError("Select a space first", state: state)
+            showConfigError("Connect a Capacities space first", state: state)
             return
         }
-
         let payload = PayloadBuilder.buildDailyNoteRequest(
             text: state.noteText,
-            spaceId: spaceId,
             useSeparator: settings.useSeparator,
             separatorString: settings.separatorString,
             includeTimestamp: settings.includeTimestamp
@@ -202,14 +196,19 @@ final class NotePanelController: NSObject {
         state.sendStatus = .sending
 
         Task { @MainActor in
-            let client = CapacitiesClient(token: token)
             do {
-                try await client.saveToDailyNote(payload)
+                let token = try await ConnectionStore.shared.accessToken(for: spaceId)
+                try await CapacitiesClient(token: token).saveToDailyNote(payload)
                 state.sendStatus = .sent
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 state.noteText = ""
                 state.sendStatus = .idle
                 self.hidePanel()
+            } catch let error as ConnectionError {
+                state.sendStatus = .error(error.errorDescription ?? "Send failed")
+                if case .reconnectRequired = error {
+                    try? await state.reloadSpaces(settings: settings)
+                }
             } catch let error as CapacitiesError {
                 state.sendStatus = .error(error.errorDescription ?? "Send failed")
             } catch {

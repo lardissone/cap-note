@@ -44,24 +44,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         Task { @MainActor in
-            await preloadSpaces()
+            CredentialsMigration.runIfNeeded(settings: AppSettings.shared)
+            do {
+                try await AppState.shared.reloadSpaces(settings: AppSettings.shared)
+            } catch {
+                NSLog("CapNote: could not load connected spaces: \(error)")
+            }
         }
-    }
-
-    /// Loads the user's spaces in the background on launch so the in-note space
-    /// switcher can show right away when more than one is available.
-    @MainActor
-    private func preloadSpaces() async {
-        let settings = AppSettings.shared
-        guard let token = settings.apiToken, !token.isEmpty else { return }
-
-        let client = CapacitiesClient(token: token)
-        guard let spaces = try? await client.listSpaces() else { return }
-
-        AppState.shared.spaces = spaces
-        settings.selectedSpaceId = SpaceSelection.resolve(
-            spaces: spaces,
-            current: settings.selectedSpaceId
-        )
     }
 }
