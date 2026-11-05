@@ -11,7 +11,6 @@ struct Connection: Codable, Equatable, Sendable {
 enum ConnectionError: Error, LocalizedError, Equatable {
     case notConnected
     case reconnectRequired(space: String)
-    case revokeFailed(space: String, reason: String)
     case denied(String)
     case stateMismatch
     case invalidCallback
@@ -24,8 +23,6 @@ enum ConnectionError: Error, LocalizedError, Equatable {
             return "Connect a Capacities space first."
         case .reconnectRequired(let space):
             return "Capacities no longer accepts the connection to \(space). Connect it again in settings."
-        case .revokeFailed(let space, let reason):
-            return "Disconnected \(space), but Capacities couldn't be notified (\(reason)). You can remove it in Capacities → Settings → Capacities API → Connections."
         case .denied(let reason):
             return "Capacities didn't grant access: \(reason)"
         case .stateMismatch:
@@ -145,7 +142,9 @@ actor ConnectionStore {
         }
     }
 
-    /// Forgets the connection locally, then revokes it on Capacities' side.
+    /// Forgets the connection locally, then revokes it on Capacities' side. A failed revoke
+    /// is only logged: the connection is already gone here, and Capacities can be slow to
+    /// answer a revoke it still carries out.
     func disconnect(spaceId: String) async throws {
         await settleRefresh(for: spaceId)
         guard let connection = try connection(for: spaceId) else { return }
@@ -153,7 +152,7 @@ actor ConnectionStore {
         do {
             try await oauth.revoke(connection.refreshToken)
         } catch {
-            throw ConnectionError.revokeFailed(space: connection.space.title, reason: error.localizedDescription)
+            NSLog("CapNote: could not revoke connection \(spaceId): \(error)")
         }
     }
 
