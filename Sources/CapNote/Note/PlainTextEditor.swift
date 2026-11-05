@@ -8,6 +8,10 @@ import SwiftUI
 struct PlainTextEditor: NSViewRepresentable {
     @Binding var text: String
     let font: NSFont
+    /// False while the card shows its other face. The text view stays mounted behind it, and
+    /// SwiftUI's hit-testing modifiers don't reach AppKit views, so it is hidden to stop it
+    /// from showing its I-beam cursor and taking clicks meant for the visible face.
+    let isActive: Bool
     let focusTrigger: Int
     let onSubmit: () -> Void
     let onEscape: () -> Void
@@ -71,6 +75,16 @@ struct PlainTextEditor: NSViewRepresentable {
         }
         if textView.font != font {
             textView.font = font
+        }
+
+        if scrollView.isHidden == isActive {
+            scrollView.isHidden = !isActive
+            // Hiding the text view takes its focus away, so give it back on return.
+            if isActive {
+                DispatchQueue.main.async {
+                    textView.window?.makeFirstResponder(textView)
+                }
+            }
         }
 
         // Keep the closures fresh — `parent` reference inside the coordinator
