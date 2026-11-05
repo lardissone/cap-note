@@ -269,20 +269,18 @@ final class ConnectionStoreTests: XCTestCase {
         XCTAssertEqual(spaces, [])
     }
 
-    func test_disconnect_revokeFails_stillRemovesAndSaysSo() async throws {
+    func test_disconnect_revokeFails_stillRemovesWithoutError() async throws {
         try saveConnection(expiresAt: now.addingTimeInterval(3600))
-        MockURLProtocol.requestHandler = { _ in throw URLError(.notConnectedToInternet) }
+        let revoked = Recorder()
+        MockURLProtocol.requestHandler = { request in
+            revoked.record(request.formFields["token"] ?? "")
+            throw URLError(.notConnectedToInternet)
+        }
         let store = makeStore()
 
-        do {
-            try await store.disconnect(spaceId: work.id)
-            XCTFail("Expected revokeFailed")
-        } catch {
-            guard case .revokeFailed(let space, _)? = error as? ConnectionError else {
-                return XCTFail("Unexpected error: \(error)")
-            }
-            XCTAssertEqual(space, "Work")
-        }
+        try await store.disconnect(spaceId: work.id)
+
+        XCTAssertEqual(revoked.values, ["rt-old"])
         let spaces = try await store.spaces()
         XCTAssertEqual(spaces, [])
     }
