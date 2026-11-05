@@ -16,6 +16,7 @@ struct NoteInputView: View {
                 PlainTextEditor(
                     text: $state.noteText,
                     font: Self.editorFont,
+                    isActive: state.face == .input,
                     focusTrigger: state.focusEditorTrigger,
                     onSubmit: onSubmit,
                     onEscape: { handleEscape() },
