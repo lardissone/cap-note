@@ -10,7 +10,7 @@ struct OAuthConfig: Sendable {
 
     static let capacities = OAuthConfig(
         // Issued by Capacities when the integration is registered.
-        clientId: "",
+        clientId: "capacities_api_capnote",
         redirectURI: "capnote://oauth/callback",
         callbackScheme: "capnote",
         scopes: ["api:read", "api:write", "offline_access"],
